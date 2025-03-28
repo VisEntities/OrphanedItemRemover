@@ -5,6 +5,8 @@
  */
 
 using Newtonsoft.Json;
+using Rust.Platform.Steam;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -152,7 +154,6 @@ namespace Oxide.Plugins
             }
 
             var stopwatch = Stopwatch.StartNew();
-            var removedCount = 0;
 
             var allItems = new List<Item>();
             var allHeldEntities = new List<BaseEntity>();
@@ -236,7 +237,39 @@ namespace Oxide.Plugins
             yield return CoroutineEx.waitForEndOfFrame;
             stopwatch.Restart();
 
+            var itemCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var item in allItems)
+            {
+                if (item == null || item.info == null)
+                    continue;
+
+                string shortName = item.info.shortname;
+                if (!itemCounts.TryGetValue(shortName, out int count))
+                {
+                    count = 0;
+                }
+
+                count += item.amount;
+                itemCounts[shortName] = count;
+            }
+
+            if (itemCounts.Count > 0)
+            {
+                Puts("Collected Item Breakdown:");
+                foreach (var kvp in itemCounts.OrderByDescending(x => x.Value))
+                {
+                    Puts($"  {kvp.Value} x {kvp.Key}");
+                }
+            }
+            else
+            {
+                Puts("No items found in final list!?");
+            }
+
+            var removedBreakdown = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             var perItemWatch = Stopwatch.StartNew();
+            int removedTotal = 0;
 
             for (int i = allHeldEntities.Count - 1; i >= 0; i--)
             {
@@ -244,11 +277,26 @@ namespace Oxide.Plugins
                 if (!entity.IsValid())
                     continue;
 
-                if (entity.GetItem() != null && entity.GetItem().amount > 0)
+                var itemRef = entity.GetItem();
+                if (itemRef != null && itemRef.amount > 0)
                     continue;
 
                 entity.Kill();
-                removedCount++;
+                removedTotal++;
+
+                string label = "(unlabeled orphan)";
+
+                if (itemRef != null && itemRef.info != null)
+                {
+                    label = itemRef.info.shortname;
+                }
+                else if (entity.ShortPrefabName != null)
+                {
+                    label = entity.ShortPrefabName;
+                }
+
+                removedBreakdown.TryGetValue(label, out int oldCount);
+                removedBreakdown[label] = oldCount + 1;
 
                 if (perItemWatch.Elapsed.TotalMilliseconds >= 3.0)
                 {
@@ -257,8 +305,17 @@ namespace Oxide.Plugins
                 }
             }
 
-            Puts($"Removed {removedCount} orphaned items in {stopwatch.Elapsed.TotalMilliseconds:0.##} ms. "
+            Puts($"Removed {removedTotal} orphaned items in {stopwatch.Elapsed.TotalMilliseconds:0.##} ms. "
                + $"Total items considered: {allItems.Count}.");
+
+            if (removedBreakdown.Count > 0)
+            {
+                Puts("Breakdown of Removed Orphans:");
+                foreach (var kvp in removedBreakdown.OrderByDescending(x => x.Value))
+                {
+                    Puts($"  {kvp.Value} x {kvp.Key}");
+                }
+            }
 
             _cleanupRunning = false;
             yield break;
