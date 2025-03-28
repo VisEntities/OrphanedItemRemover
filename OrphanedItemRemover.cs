@@ -208,10 +208,13 @@ namespace Oxide.Plugins
                 }
             }
 
-            Puts($"Collected items in {stopwatch.Elapsed.TotalMilliseconds:0.##} ms.");
+            int totalCollected = allItems.Count;
+            Puts($"Collected {totalCollected} items in {stopwatch.Elapsed.TotalMilliseconds:0.##} ms.");
 
             yield return CoroutineEx.waitForEndOfFrame;
             stopwatch.Restart();
+
+            int beforeSubItemsCount = allItems.Count;
 
             for (int i = allItems.Count - 1; i >= 0; i--)
             {
@@ -227,7 +230,8 @@ namespace Oxide.Plugins
                     allHeldEntities.Remove(heldEnt);
             }
 
-            Puts($"Processed sub-items in {stopwatch.Elapsed.TotalMilliseconds:0.##} ms.");
+            int subItemsFound = allItems.Count - beforeSubItemsCount;
+            Puts($"Processed sub-items in {stopwatch.Elapsed.TotalMilliseconds:0.##} ms. (found {subItemsFound} additional items)");
 
             yield return CoroutineEx.waitForEndOfFrame;
             stopwatch.Restart();
@@ -253,7 +257,9 @@ namespace Oxide.Plugins
                 }
             }
 
-            Puts($"Removed {removedCount} orphaned items in {stopwatch.Elapsed.TotalMilliseconds:0.##} ms. Total items considered: {allItems.Count}.");
+            Puts($"Removed {removedCount} orphaned items in {stopwatch.Elapsed.TotalMilliseconds:0.##} ms. "
+               + $"Total items considered: {allItems.Count}.");
+
             _cleanupRunning = false;
             yield break;
         }
