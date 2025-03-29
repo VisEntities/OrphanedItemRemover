@@ -5,7 +5,6 @@
  */
 
 using Newtonsoft.Json;
-using Rust.Platform.Steam;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -16,7 +15,7 @@ using UnityEngine;
 namespace Oxide.Plugins
 {
     [Info("Orphaned Item Remover", "VisEntities", "1.0.0")]
-    [Description(" ")]
+    [Description("Removes broken held entities that are no longer linked with valid inventory items.")]
     public class OrphanedItemRemover : RustPlugin
     {
         #region Fields
